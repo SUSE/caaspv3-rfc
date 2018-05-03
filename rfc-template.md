@@ -1,5 +1,10 @@
 # Title
 
+| Field  | Value      |
+|:-------|:-----------|
+| Status | Draft      |
+| Date   | YYYY-MM-DD |
+
 ## Introduction
 
 ### Problem description
@@ -18,3 +23,9 @@ possible.
 ## Concerns
 
 List any concerns, unknowns, etc.
+
+## Revision History:
+
+| Date       | Comment       |
+|:-----------|:--------------|
+| YYYY-MM-DD | Initial Draft |
