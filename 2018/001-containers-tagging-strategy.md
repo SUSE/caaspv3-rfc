@@ -119,8 +119,12 @@ Imagine there is a mariadb image tagged as below in the registry (emulating
 REPOSITORY           TAG                    IMAGE ID
 caasp/mariadb        10.2                   1ade07d13d13
 caasp/mariadb        latest                 1ade07d13d13
-caasp/mariadb        10.2.15-lp150.2.3.2    1ade07d13d13
+caasp/mariadb        10.2.15-3.2            1ade07d13d13
 ```
+
+Note that the build ID is being used as the release number. Build ID are
+the build numbers currently included in the resulting files of KIWI build
+within the build service.
 
 All three tags pointing to the same image. Then if a new update due to a new
 mariadb release happens adding the new image could look like that:
@@ -129,8 +133,8 @@ mariadb release happens adding the new image could look like that:
 REPOSITORY           TAG                    IMAGE ID
 caasp/mariadb        10.2                   70b5d81549ec
 caasp/mariadb        latest                 70b5d81549ec
-caasp/mariadb        10.2.15-lp150.2.3.2    1ade07d13d13
-caasp/mariadb        10.2.15-lp150.3.1.1    70b5d81549ec
+caasp/mariadb        10.2.15-3.2            1ade07d13d13
+caasp/mariadb        10.2.15-3.3            70b5d81549ec
 ```
 
 Note that old image would be still accessible with the concrete version tight
@@ -142,10 +146,10 @@ result in:
 REPOSITORY           TAG                    IMAGE ID
 caasp/mariadb        10.2                   70b5d81549ec
 caasp/mariadb        latest                 284549eacf84
-caasp/mariadb        10.2.15-lp150.2.3.2    1ade07d13d13
-caasp/mariadb        10.2.15-lp150.3.1.1    70b5d81549ec
+caasp/mariadb        10.2.15-3.2            1ade07d13d13
+caasp/mariadb        10.2.15-3.3            70b5d81549ec
 caasp/mariadb        10.3                   284549eacf84
-caasp/mariadb        10.3.1-lp150.1.1.1     284549eacf84
+caasp/mariadb        10.3.1-3.4             284549eacf84
 ```
 
 Aging all three image versions are accessible and there is a stable reference
