@@ -49,7 +49,7 @@ Kubernetes pulls the images referenced in the Kubernetes manifest. Kubernetes
 checks if those images are available locally and if not pulls them from the
 registry. It means that if an image reference is overwritten with the same
 reference Kubernetes will not pull it again and then images of a running
-cluster start to diverge from the images available into the registry.
+cluster start to diverge from the images available inside the registry.
 
 The above situation could be specially tricky when, for instance, new nodes are
 added to a cluster that is running silently with outdated images. This is
@@ -70,9 +70,9 @@ as exposed above.
 
 Before SUSE container registry images have been and are being delivered wrapped
 in RPMs. This way the update and delivery worklfow is the same as any other
-packages. However within the containers ecosystem this presents some isssues:
+packages. However within the containers ecosystem this presents some issues:
 
-* Containers ecosystems based on Kubernetes are not disigned to interact with
+* Containers ecosystems based on Kubernetes are not designed to interact with
   RPM repositories but container registries.
   
 * Installing, updating and uninstalling RPMs can be costly. In CaaSP it
@@ -182,8 +182,12 @@ One of the advantages of using this strategy is that it does not necessarily
 require a Kubernetes manifest update for each image update. The manifest could
 be set to some stable mariadb version (e.g. 10.2) and still be updated if the
 image requires a rebuild due some security fixes in the SLE base image or even
-in mariadb itself.
+in mariadb itself. In addition, Kubernetes manifests can be configured with
+the [imagePullPolicy="Always"](https://kubernetes.io/docs/concepts/containers/)
+to make sure Kubelet always pulls de image from the registry regardless if it
+was already pulled or not. This way Kubelet is always asking for the latest
+image for a given tag.
 
-Also, using this approach, will be simple to clearly identify a local image
+Finally, using this approach, will be simple to clearly identify a local image
 running in a cluster as all supported images will always be in the registry
 tagged at least with a complete version and release numbers.
