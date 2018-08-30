@@ -125,6 +125,8 @@ The user interface of velum needs to be adapted minimally.
 * indirect display of new version content through a link to the release notes
 * button to switch to the next channel in velum
   - the button will trigger `transactional-update salt migrate`
+* confirmation of the user that the mirrors are synced
+  - this confirmation (button) will trigger the "new version" checker again to make sure the sync is done and grains are updated
 
 Velum needs to know when a new version is available, by looking at a special grain, that indicates
 the availability of a new version. This grain is set by the service that runs on each worker.
@@ -241,3 +243,4 @@ None known at the moment.
 | Date       | Comment       |
 |:-----------|:--------------|
 | 2018-07-31 | Initial Draft |
+| 2018-08-30 | Update for more mirror sync details |
