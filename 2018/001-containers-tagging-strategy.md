@@ -45,68 +45,69 @@ points to a unique image.
 
 ## Problem description
 
-Kubernetes pulls the images referenced in the Kubernetes manifest. Kubernetes
-checks if those images are available locally and if not pulls them from the
-registry. It means that if an image reference is overwritten with the same
-reference Kubernetes will not pull it again and then images of a running
-cluster start to diverge from the images available inside the registry.
+With the current workflow, where each container image build is pushed to a
+registry, some strategy to identify versions and releases from the registry
+client perspective is not as abvious as it should. 
 
-The above situation could be specially tricky when, for instance, new nodes are
-added to a cluster that is running silently with outdated images. This is
-particularly tricky because it can easily end up in a situation where the
-cluster is running multiple versions of the same image. Let's imagine the
-cluster was running some outdated mariadb image, then when a new node is added
-and this node pulls the images from the registry (including the mariadb one)
-it will pull and run different versions of the images without noticing it.
-Running a cluster with multiple mariadb versions without control or being
-enforced by the administrator is clearly dangerous and painful to debug if it
-causes some issue at some point.
+It is important to note that container image updates happen due to a source
+change (KIWI descriptor file or Dockerfile update) or due to a former package
+update. Thus any update of a package required during the image build,
+triggers a new image release to the registry. According to that images
+publised in the registry are expected to be updated often.
 
-The tagging strategy of the delivered images must be aligned with the build and
-update workflow. Otherwise it is pretty simple to end up in similar situations
-as exposed above.
+Having updates on images without any visible change into the image references
+can be confusing from the registry client perspective. In this context pooling
+tags for a specific namespace will result always into the same list, being 
+immutable across updates. 
+
+```
+GET /v2/<name>/tags/list
+```
+
+However downloaded binaries of an image will not be immutable. It should
+be easy from the registry client perspective to track image updates and not
+just endup with different image binaries and wihout any option to reference
+an old image without having to use the image digest.
+
+Another situation where the tags of the image should be used with care is when
+the image delivers certain specific application and the image is tagged
+according to this application version. This practice is helpful in
+order to create readable and meaningfull image references. 
+
+For instance, a reference like `<registry>/opensuse/mariadb:10.2` clearly
+suggests the image is providing `mariadb` v10.2.
+
+While this may look like a simple and safe way of tagging the image it could
+easly lead to some confusing inconsistences when the image updates are pushed
+to the registry in an automated fashion as it is the case with the Open
+Build Service. In this case the tag 10.2 would be part of the image sources
+and the match within the package version and tag would happen manually. This
+clearly turns to be problematic in rolling release distributions where doing
+this match manually is not really possible. But also could be problematic
+if the exacte package version as tag is being used, as even in the scope of a
+non rolling distribution the package version could be silently increased.
+
 
 ## Current situation
 
-Before SUSE container registry images have been and are being delivered wrapped
-in RPMs. This way the update and delivery worklfow is the same as any other
-packages. However within the containers ecosystem this presents some issues:
+Tags are hardcoded in image sources, thus any image rebuild ends up with the
+same tag. Currently
+[replace_using_package_version](https://github.com/openSUSE/obs-service-replace_using_package_version)
+is an OBS service that can be used to replace a needle from sources with the
+version of a given package.
 
-* Containers ecosystems based on Kubernetes are not designed to interact with
-  RPM repositories but container registries.
-  
-* Installing, updating and uninstalling RPMs can be costly. In CaaSP it
-  requires a transactional update.
-  
-* Using RPMS requires additional services to handle images upload into docker
-  or crio daemons. See container-feeder tool or sle2docker. While systems like
-  Kubernetes are already prepared to pull and load images from a registry.
-  
-* Big downloads, RPMs do not benefit from layers reuse. RPMs contain all
-  container layers even only unique layers are finally loaded into the daemon. 
-  
-In this context stable tags for references are being used. For CaaSP images are
-tagged with a fixed tag (usually the version of the main containerized
-application) defined in the kiwi file description and not modified during
-updates, however the RPM includes a metadata file used by the container-feeder.
-At loading time container-feeder re-tags the image with the '<tag>-<release>'
-and 'latest' tags, this way, even using stable tags in manifests the images
-are locally tagged with multiple tags, including the specific release tight to
-an RPM and image build.
+This is helpful to tie and chain a tag to certain package version, however
+it does not cover the case were the image is being updated due to another
+package, in this case, any rebuild would be tagged the same.
 
-## Proposed change
+## Proposed changes
 
-Introduce an app or service to track updates in the registry, something similar
-as what zypper does for RPMs and repositories. This is a key point and the
-proposed strategy here assumes there is going to be something like that
-available.
+Tags from the registry perspective and client perspective are cheap and simple.
+Having an image tagged multiple time with different refences causes no issues
+and can be helpful to easily provide some additional context.
 
-The proposed change mimics the tagging strategy exposed above when using images
-wrapped in RPMs, but using the SUSE container registry and OBS instead.
-
-`kiwi` and `skopeo` tools can build images with multiple tags (since versions
-9.15.3 and 1.30.0 respectively). Thus the main idea is to keep using stable
-tags to facilitate image references in manifests but also tag images in
+The main idea is to keep using stable tags to facilitate image references
+in systems where no dynamic references are possible but also tag images in the
 registry with additional dynamic tags, based on included packages versions or
 image release numbers. This way we could have in the registry multiple images
 with a meaningful tags pointing to a specific version, but also a stable tag
@@ -117,9 +118,9 @@ Imagine there is a mariadb image tagged as below in the registry (emulating
 
 ```
 REPOSITORY           TAG                    IMAGE ID
-caasp/mariadb        10.2                   1ade07d13d13
-caasp/mariadb        latest                 1ade07d13d13
-caasp/mariadb        10.2.15-3.2            1ade07d13d13
+opensuse/mariadb     10.2                   1ade07d13d13
+opensuse/mariadb     latest                 1ade07d13d13
+opensuse/mariadb     10.2.15-3.2            1ade07d13d13
 ```
 
 Note that the build ID is being used as the release number. Build ID are
@@ -131,63 +132,73 @@ mariadb release happens adding the new image could look like that:
 
 ```
 REPOSITORY           TAG                    IMAGE ID
-caasp/mariadb        10.2                   70b5d81549ec
-caasp/mariadb        latest                 70b5d81549ec
-caasp/mariadb        10.2.15-3.2            1ade07d13d13
-caasp/mariadb        10.2.15-3.3            70b5d81549ec
+opensuse/mariadb     10.2                   70b5d81549ec
+opensuse/mariadb     latest                 70b5d81549ec
+opensuse/mariadb     10.2.15-3.2            1ade07d13d13
+opensuse/mariadb     10.2.15-3.3            70b5d81549ec
 ```
 
-Note that old image would be still accessible with the concrete version tight
+Note that old image would be still accessible with the specific version tight
 to the specific version and release. Again, if a new update happens but this
 time due to a new mariadb version adding a third image into the registry could
 result in:
 
 ```
 REPOSITORY           TAG                    IMAGE ID
-caasp/mariadb        10.2                   70b5d81549ec
-caasp/mariadb        latest                 284549eacf84
-caasp/mariadb        10.2.15-3.2            1ade07d13d13
-caasp/mariadb        10.2.15-3.3            70b5d81549ec
-caasp/mariadb        10.3                   284549eacf84
-caasp/mariadb        10.3.1-3.4             284549eacf84
+opensuse/mariadb     10.2                   70b5d81549ec
+opensuse/mariadb     latest                 284549eacf84
+opensuse/mariadb     10.2.15-3.2            1ade07d13d13
+opensuse/mariadb     10.2.15-3.3            70b5d81549ec
+opensuse/mariadb     10.3                   284549eacf84
+opensuse/mariadb     10.3.1-3.4             284549eacf84
 ```
 
-Aging all three image versions are accessible and there is a stable reference
-to get the latest. However this time, since the mariadb version changed, there
-is also version tag to get the latest release of an specific version.
+For that to happen it required for the build system to support three features:
 
-To get to this sort of tagging strategy some modifications are required in our
-workflow and toolchain.
+* Support for multiple tags
 
-* Need correct versions of KIWI and skopeo in relevant streams (mostly SLE 15)
-  With it the stable tags could be already defined ('latest' and '10.3' of the
-  above example)
-  
-* Need OBS to add/modify tags at build time using the KIWI command call to
-  append the build ID and/or release numbers. Currently the tag can be modified
-  at call time in KIWI with the `--set-container-tag`. Probably this can be
-  used to append release numbers to a tag.
-  
-* Need OBS to push to the registry the image with all the tags included within
-  the built binary.
+  Multiple tags are possible in `kiwi` since v9.15.3 (only if 
+  `skopeo >= 1.30` is also available present). The image tarballs in that case
+  support multiple tags, but this is not reflected to the registry when pushed,
+  only the main tag is included.
+  However the Build Service has an alternative to include additional tags into
+  the pushed images. Including a syntax like
 
-* SUSE requires some tool to track changes in the registry and be capable to
-  detect when updates are available.
-  
-Tagging an image with the main package version it can be achieved by using the
-`obs-service-replace_using_package_version` service. This is currently being
-used in Head project in IBS & OBS.
+  ```
+  <!-- OBS-AddTag: <name>:<tag> -->
+  ```
+  into the XML kiwi file will make OBS to push the image with the provided
+  additional tag.
 
-One of the advantages of using this strategy is that it does not necessarily
-require a Kubernetes manifest update for each image update. The manifest could
-be set to some stable mariadb version (e.g. 10.2) and still be updated if the
-image requires a rebuild due some security fixes in the SLE base image or even
-in mariadb itself. In addition, Kubernetes manifests can be configured with
-the [imagePullPolicy="Always"](https://kubernetes.io/docs/concepts/containers/)
-to make sure Kubelet always pulls de image from the registry regardless if it
-was already pulled or not. This way Kubelet is always asking for the latest
-image for a given tag.
+* Support to include build ID within a tag
 
-Finally, using this approach, will be simple to clearly identify a local image
-running in a cluster as all supported images will always be in the registry
-tagged at least with a complete version and release numbers.
+  Currently there is no way to achieve that. However a couple of quick
+  (and potentially hacky) options could be considered to fill the gap:
+
+  1. Modify the kiwi build recipe in OBS to retag the image at build time.
+     Use `--set-container-tag` command line flag to modify the tag in sources
+     and append the build ID. Requires an update of the build recipe.
+     However this would only modify the given tag, not append a new one.
+
+  2. Adding some kind of post hook to the kiwi build to include the buildID
+     into the build image. This could be done relatively easy in current
+     skopeo versions by calling:
+
+     ```
+     skopeo copy docker-archive:<image-tarball>:<name>:<tag> 
+     docker-archive:<image-tarball>:<name>:<tag>
+     --additional-tag <name>:<tag_including_buildID>
+     ```
+
+     However this requires recopying the image or even uncompress, copy and
+     recompress again if the build was using compressed builds.
+
+  3. Extend `OBS-AddTag: <name>:<tag>` syntax to enable the buildID inclusion.
+
+* Support to tag according to the version of a package, or part of it.
+
+  It can be achieved using the `replace_using_package_version` OBS service.
+
+To fill the gap only some way to include the buildID into the already
+defined tags is missing.
+
