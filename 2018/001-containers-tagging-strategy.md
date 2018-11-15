@@ -90,18 +90,6 @@ non rolling distribution the package version could be silently increased.
 
 ## Current situation
 
-Tags are hardcoded in image sources, thus any image rebuild ends up with the
-same tag. Currently
-[replace_using_package_version](https://github.com/openSUSE/obs-service-replace_using_package_version)
-is an OBS service that can be used to replace a needle from sources with the
-version of a given package.
-
-This is helpful to tie and chain a tag to certain package version, however
-it does not cover the case were the image is being updated due to another
-package, in this case, any rebuild would be tagged the same.
-
-## Proposed changes
-
 Tags from the registry perspective and client perspective are cheap and simple.
 Having an image tagged multiple time with different refences causes no issues
 and can be helpful to easily provide some additional context.
@@ -153,7 +141,7 @@ opensuse/mariadb     10.3                   284549eacf84
 opensuse/mariadb     10.3.1-3.4             284549eacf84
 ```
 
-For that to happen it required for the build system to support three features:
+For that to happen it the build system requires three features:
 
 * Support for multiple tags
 
@@ -165,40 +153,30 @@ For that to happen it required for the build system to support three features:
   the pushed images. Including a syntax like
 
   ```
-  <!-- OBS-AddTag: <name>:<tag> -->
+  <!-- OBS-AddTag: opensuse/mariadb:10.3.1 -->
   ```
   into the XML kiwi file will make OBS to push the image with the provided
   additional tag.
 
 * Support to include build ID within a tag
 
-  Currently there is no way to achieve that. However a couple of quick
-  (and potentially hacky) options could be considered to fill the gap:
+  This is currently possible using the above mentioned OBS specific syntax.
+  Currently it is possible to do it with something like:
 
-  1. Modify the kiwi build recipe in OBS to retag the image at build time.
-     Use `--set-container-tag` command line flag to modify the tag in sources
-     and append the build ID. Requires an update of the build recipe.
-     However this would only modify the given tag, not append a new one.
+  ```
+  <!-- OBS-AddTag: opensuse/mariadb:10.3.1-<RELEASE> -->
+  ```
 
-  2. Adding some kind of post hook to the kiwi build to include the buildID
-     into the build image. This could be done relatively easy in current
-     skopeo versions by calling:
-
-     ```
-     skopeo copy docker-archive:<image-tarball>:<name>:<tag> 
-     docker-archive:<image-tarball>:<name>:<tag>
-     --additional-tag <name>:<tag_including_buildID>
-     ```
-
-     However this requires recopying the image or even uncompress, copy and
-     recompress again if the build was using compressed builds.
-
-  3. Extend `OBS-AddTag: <name>:<tag>` syntax to enable the buildID inclusion.
+  In that case OBS will subsitute the `<RELEASE>` placeholder for the actual
+  build ID.
 
 * Support to tag according to the version of a package, or part of it.
 
   It can be achieved using the `replace_using_package_version` OBS service.
+  See further information 
+  [here](https://github.com/openSUSE/obs-service-replace_using_package_version)
 
-To fill the gap only some way to include the buildID into the already
-defined tags is missing.
-
+A working example of this setup is currelty working in
+[kubic-project/container-images](https://github.com/kubic-project/container-images)
+repo and into the [OBS project](https://build.opensuse.org/project/show/devel:CaaSP:kubic-container)
+that is synchronized with it.
