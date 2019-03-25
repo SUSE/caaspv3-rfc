@@ -1,7 +1,7 @@
-# Kubic Project Request for Comments
+# CaaS Platform v3 Project Request for Comments
 
-This repository contains Request for Comments documents used as part of the Kubic
-development process. Major features or rework should be documented here prior to
+This repository contains Request for Comments documents used as part of the Caas Platform
+development process up to version 3. Major features or rework should be documented here prior to
 any working beginning on them.
 
 This serves to provide a history of decision making, and a clearer more open
@@ -13,7 +13,7 @@ process for moving the project forward.
 * A card in the backlog requesting the creation of the RFC is added to the sprint. 
 
 * Anyone in the team can take over the card and write the RFC.
-The RFC template is available [here](https://github.com/kubic-project/rfc/blob/master/rfc-template.md)
+The RFC template is available [here](https://github.com/SUSE/caaspv3-rfc/blob/master/rfc-template.md)
 
 * Once the RFC is submitted as a PR, an email should be sent to caasp-devel@suse.de letting everyone know the RFC is ready to be reviewed.
 At this point, everyone on the team is expected to read the RFC. 
